@@ -52,6 +52,8 @@ button[disabled] { opacity: .6; cursor: progress; }
 @media (max-width: 480px) { body { background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px); } .gate { padding-inline: 16px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
+<!-- visit counter (GoatCounter: no cookies, nothing personal; counts a view of this page) -->
+<script data-goatcounter="https://kopelowitz.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
 <main class="gate" id="gate">
@@ -77,6 +79,12 @@ const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 const tob64 = buf => { let s = ""; const u = new Uint8Array(buf); for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
 const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 const msg = document.getElementById("msg"), go = document.getElementById("go"), pw = document.getElementById("pw");
+function track(path, title) {   // "the tree was opened", as distinct from "the page was looked at"
+  try {
+    if (window.goatcounter && goatcounter.count) { goatcounter.count({ path, title, event: true }); return; }
+    new Image().src = "https://kopelowitz.goatcounter.com/count?" + new URLSearchParams({ p: path, t: title, e: "true", r: document.referrer, rnd: Date.now() });
+  } catch (err) {}
+}
 
 async function deriveKey(password) {
   const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(norm(password)), "PBKDF2", false, ["deriveKey"]);
@@ -111,6 +119,7 @@ document.getElementById("form").addEventListener("submit", async e => {
   let key, payload;
   try { key = await deriveKey(pw.value); payload = await unseal(key); }
   catch (err) { go.disabled = false; msg.className = "error"; msg.textContent = "That password didn't work. Check the spelling and try again."; pw.select(); return; }
+  track("unlocked", "Tree opened (password)");
   if (document.getElementById("remember").checked) {
     try { localStorage.setItem(STORE, tob64(await crypto.subtle.exportKey("raw", key))); } catch (err) {}
   }
@@ -130,6 +139,7 @@ document.getElementById("form").addEventListener("submit", async e => {
     try { localStorage.removeItem(STORE); } catch (e2) {}
     msg.textContent = ""; pw.focus(); return;
   }
+  track("unlocked", "Tree opened (remembered)");
   try { await launch(payload, key); }
   catch (err) { msg.className = "error"; msg.textContent = "The tree couldn't finish loading. Check your internet connection and reload the page."; }
 })();
